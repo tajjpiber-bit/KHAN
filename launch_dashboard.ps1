@@ -6,6 +6,9 @@ Write-Host "STARTING TRADING DASHBOARD AUTO-LAUNCHER" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Kill any existing node servers to free up port 8080
+Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+
 $nodeDir = "$PSScriptRoot\node_portable"
 $nodeExe = "$nodeDir\node.exe"
 
@@ -51,10 +54,10 @@ Write-Host "[SUCCESS] Server is running in the background on port 8080!" -Foregr
 # 4. Open Dashboard in Browser
 Start-Process "http://localhost:8080"
 
-# 5. Start SSH tunnel and output webhook URL
+# 5. Start SSH tunnel with auto-reconnect loop
 Write-Host ""
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
-Write-Host "STARTING PUBLIC TUNNEL TO TRADINGVIEW (WITH FAILOVER)" -ForegroundColor Cyan
+Write-Host "STARTING PUBLIC TUNNEL TO TRADINGVIEW (WITH AUTO-RECONNECT)" -ForegroundColor Cyan
 Write-Host "Please wait 5 seconds for the connection to establish." -ForegroundColor Cyan
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
 Write-Host "Copy the URL printed below and paste it in TradingView:" -ForegroundColor Green
@@ -63,9 +66,16 @@ Write-Host "[WARNING] DO NOT CLOSE THIS WINDOW or the tunnel will disconnect!" -
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
 Write-Host ""
 
-# Double-failover SSH tunnel connection
-Write-Host "[INFO] Trying Serveo tunnel..." -ForegroundColor Yellow
-ssh -o StrictHostKeyChecking=no -R 80:localhost:8080 serveo.net
-
-Write-Host "[INFO] Serveo disconnected. Trying localhost.run tunnel..." -ForegroundColor Yellow
-ssh -o StrictHostKeyChecking=no -R 80:localhost:8080 nokey@localhost.run
+while ($true) {
+    Write-Host "[INFO] Connecting to Serveo..." -ForegroundColor Yellow
+    ssh -o StrictHostKeyChecking=no -R 80:localhost:8080 serveo.net
+    
+    Write-Host "[INFO] Serveo disconnected. Retrying with localhost.run in 5 seconds..." -ForegroundColor Red
+    Start-Sleep -Seconds 5
+    
+    Write-Host "[INFO] Connecting to localhost.run..." -ForegroundColor Yellow
+    ssh -o StrictHostKeyChecking=no -R 80:localhost:8080 nokey@localhost.run
+    
+    Write-Host "[INFO] Localhost.run disconnected. Retrying with Serveo in 5 seconds..." -ForegroundColor Red
+    Start-Sleep -Seconds 5
+}
