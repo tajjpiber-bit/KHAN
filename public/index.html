@@ -65,11 +65,12 @@
                 <th>Direction</th>
                 <th>Active Rules</th>
                 <th>SMT Check</th>
+                <th>Chart</th>
               </tr>
             </thead>
             <tbody id="logs-body">
               <tr class="placeholder-row">
-                <td colspan="8">Waiting for signals from TradingView... Click "Simulate Signal" to test.</td>
+                <td colspan="9">Waiting for signals from TradingView... Click "Simulate Signal" to test.</td>
               </tr>
             </tbody>
           </table>
@@ -82,9 +83,7 @@
         <ol class="guide-list">
           <li>Create an alert on TradingView using our indicator.</li>
           <li>Set the **Condition** to the indicator name, and select **`Any alert() function call`**.</li>
-          <li>Check the **Webhook URL** box and paste:
-            <code id="webhook-uri-display">http://YOUR_SERVER_IP:8080/webhook</code>
-          </li>
+          <li>Check the **Webhook URL** box and paste your **public tunnel URL** (displayed in your black command window, e.g. `https://your-tunnel.serveousercontent.com/webhook`).</li>
           <li>Set the alert message body exactly to:
             <pre><code>{
   "symbol": "{{ticker}}",
@@ -93,7 +92,8 @@
   "score": "{{plot_0}}",
   "rules": "{{plot_4}}",
   "smt": "{{plot_3}}",
-  "price": "{{close}}"
+  "price": "{{close}}",
+  "image": "{{image}}"
 }</code></pre>
           </li>
         </ol>
@@ -101,6 +101,15 @@
           <strong>⚠️ Note:</strong> If hosting locally, use a utility like <strong>ngrok</strong> to expose port 8080 to the internet so TradingView can reach your webhook endpoint.
         </div>
       </section>
+    </div>
+  </div>
+
+  <!-- Image Viewer Modal -->
+  <div id="image-modal" class="modal">
+    <div class="modal-wrapper">
+      <span class="close-modal">&times;</span>
+      <img id="modal-img" src="" alt="Chart Screenshot">
+      <div id="modal-caption">TradingView Screenshot</div>
     </div>
   </div>
 

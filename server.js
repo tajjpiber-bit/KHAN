@@ -51,7 +51,7 @@ const broadcastSignal = (signal) => {
 // Webhook endpoint to receive alerts from TradingView
 app.post('/webhook', (req, res) => {
   try {
-    const { symbol, timeframe, direction, score, rules, smt, price } = req.body;
+    const { symbol, timeframe, direction, score, rules, smt, price, image } = req.body;
 
     if (!symbol || !direction) {
       return res.status(400).json({ error: 'Missing symbol or direction' });
@@ -66,6 +66,7 @@ app.post('/webhook', (req, res) => {
       rules: rules || 'N/A',
       smt: smt || 'None',
       price: parseFloat(price) || 0,
+      image: image || '',
       timestamp: new Date().toISOString()
     };
 

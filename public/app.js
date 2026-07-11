@@ -27,15 +27,10 @@ const filterStrongCheckbox = document.getElementById('filter-strong');
 const btnSound = document.getElementById('btn-sound');
 const btnSimulate = document.getElementById('btn-simulate');
 const btnClearLogs = document.getElementById('btn-clear-logs');
-const webhookUriDisplay = document.getElementById('webhook-uri-display');
-
 // Alert state
 let soundEnabled = true;
 const alertSound = document.getElementById('alert-sound');
 const strongAlertSound = document.getElementById('strong-alert-sound');
-
-// Update Webhook URL display dynamically based on the current window location
-webhookUriDisplay.textContent = `${window.location.origin}/webhook`;
 
 // Initialize Symbol Cards
 function initCards() {
@@ -178,6 +173,10 @@ function addLogToTable(signal) {
 
   const priceText = signal.symbol.includes('JPY') ? `¥${signal.price.toFixed(2)}` : `$${signal.price.toFixed(2)}`;
 
+  const imageBtn = (signal.image && signal.image.startsWith('http')) 
+    ? `<td><button class="btn-view-chart" onclick="showChartModal('${signal.image}')">📸 View</button></td>` 
+    : `<td>-</td>`;
+
   row.innerHTML = `
     <td>${timeStr}</td>
     <td><strong>${signal.symbol}</strong></td>
@@ -187,6 +186,7 @@ function addLogToTable(signal) {
     <td class="${dirClass}">${signal.direction}</td>
     <td><code class="rules-list">${signal.rules}</code></td>
     <td><span class="smt-badge ${signal.smt.includes('Valid') ? 'valid' : 'pending'}">${signal.smt}</span></td>
+    ${imageBtn}
   `;
 
   logsBody.insertBefore(row, logsBody.firstChild);
@@ -253,6 +253,28 @@ function connectSSE() {
   };
 }
 
+// Modal elements
+const imageModal = document.getElementById('image-modal');
+const modalImg = document.getElementById('modal-img');
+const closeModal = document.querySelector('.close-modal');
+
+// Show image in modal
+function showChartModal(url) {
+  modalImg.src = url;
+  imageModal.classList.add('active');
+}
+
+// Close modal handlers
+closeModal.addEventListener('click', () => {
+  imageModal.classList.remove('active');
+});
+
+imageModal.addEventListener('click', (e) => {
+  if (e.target === imageModal) {
+    imageModal.classList.remove('active');
+  }
+});
+
 // Sound button toggle
 btnSound.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
@@ -294,6 +316,15 @@ btnSimulate.addEventListener('click', async () => {
   else if (randomSymbol.includes('JPY')) price = 150 + Math.random() * 10;
   else price = 1 + Math.random() * 0.5;
 
+  // Real chart screenshots from Unsplash to look very premium
+  const chartImages = [
+    'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800',
+    'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800',
+    'https://images.unsplash.com/photo-1642390091310-1fe98e722513?w=800',
+    'https://images.unsplash.com/photo-1624996379697-f01d168b1a52?w=800'
+  ];
+  const mockImage = chartImages[Math.floor(Math.random() * chartImages.length)];
+
   const mockPayload = {
     symbol: randomSymbol,
     timeframe: timeframe,
@@ -301,7 +332,8 @@ btnSimulate.addEventListener('click', async () => {
     score: score,
     rules: selectedRules,
     smt: smt,
-    price: price
+    price: price,
+    image: mockImage
   };
 
   try {
@@ -317,7 +349,7 @@ btnSimulate.addEventListener('click', async () => {
 
 // Clear Logs click
 btnClearLogs.addEventListener('click', () => {
-  logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="8">Logs cleared. Waiting for new signals...</td></tr>`;
+  logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="9">Logs cleared. Waiting for new signals...</td></tr>`;
 });
 
 // Run Init
