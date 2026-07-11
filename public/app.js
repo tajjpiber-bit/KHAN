@@ -151,6 +151,97 @@ function playSound(signal) {
   }
 }
 
+// Load persistent trade states from localStorage
+const tradeStates = JSON.parse(localStorage.getItem('tradeStates') || '{}');
+
+// Render action button or result badge inside table row
+function renderActionCellContent(signalId, status, result) {
+  if (status === 'active') {
+    return `
+      <div class="trade-actions" id="actions-${signalId}">
+        <button class="btn-action-win" onclick="event.stopPropagation(); setTradeResult('${signalId}', 'win')" title="Mark as Take Profit Hit (Win)">✅ TP</button>
+        <button class="btn-action-loss" onclick="event.stopPropagation(); setTradeResult('${signalId}', 'loss')" title="Mark as Stop Loss Hit (Loss)">❌ SL</button>
+      </div>
+    `;
+  } else if (status === 'closed') {
+    if (result === 'win') {
+      return `<span class="badge-status win" style="cursor: pointer;" onclick="event.stopPropagation(); resetTradeState('${signalId}')" title="Click to Reset to Active">🟢 WIN (+2.5R)</span>`;
+    } else {
+      return `<span class="badge-status loss" style="cursor: pointer;" onclick="event.stopPropagation(); resetTradeState('${signalId}')" title="Click to Reset to Active">🔴 LOSS (-1.0R)</span>`;
+    }
+  }
+  return `<span class="badge-status active">⏳ ACTIVE</span>`;
+}
+
+// Update the trade status inside memory and UI
+function updateTradeStatus(signalId, status, result) {
+  tradeStates[signalId] = { status, result };
+  localStorage.setItem('tradeStates', JSON.stringify(tradeStates));
+  
+  // Re-render the specific row cell
+  const rowElement = document.getElementById(`row-${signalId}`);
+  if (rowElement) {
+    const actionCell = rowElement.querySelector('.action-cell');
+    if (actionCell) {
+      actionCell.innerHTML = renderActionCellContent(signalId, status, result);
+    }
+  }
+  
+  // Recalculate stats panel
+  updateStatsPanel();
+}
+
+window.setTradeResult = function(signalId, result) {
+  updateTradeStatus(signalId, 'closed', result);
+};
+
+window.resetTradeState = function(signalId) {
+  updateTradeStatus(signalId, 'active', null);
+};
+
+// Update top statistics dashboard panels
+function updateStatsPanel() {
+  const signals = Object.values(signalsMap);
+  const total = signals.length;
+  
+  let activeCount = 0;
+  let winCount = 0;
+  let lossCount = 0;
+  let totalPnl = 0.0;
+  
+  signals.forEach(sig => {
+    const state = tradeStates[sig.id] || { status: 'active', result: null };
+    if (state.status === 'active') {
+      activeCount++;
+    } else if (state.status === 'closed') {
+      if (state.result === 'win') {
+        winCount++;
+        totalPnl += 2.5; // Average RRR (TP1 1:2 and TP2 1:3 = 2.5R)
+      } else if (state.result === 'loss') {
+        lossCount++;
+        totalPnl -= 1.0;
+      }
+    }
+  });
+  
+  const closedCount = winCount + lossCount;
+  const winRate = closedCount > 0 ? Math.round((winCount / closedCount) * 100) : 0;
+  
+  const totalEl = document.getElementById('stats-total');
+  const activeEl = document.getElementById('stats-active');
+  const winsEl = document.getElementById('stats-wins');
+  const lossesEl = document.getElementById('stats-losses');
+  const winrateEl = document.getElementById('stats-winrate');
+  const pnlEl = document.getElementById('stats-pnl');
+
+  if (totalEl) totalEl.textContent = total;
+  if (activeEl) activeEl.textContent = activeCount;
+  if (winsEl) winsEl.textContent = winCount;
+  if (lossesEl) lossesEl.textContent = lossCount;
+  if (winrateEl) winrateEl.textContent = `${winRate}%`;
+  if (pnlEl) pnlEl.textContent = `${totalPnl > 0 ? '+' : ''}${totalPnl.toFixed(1)}R`;
+}
+
 // Add row to Log Table
 function addLogToTable(signal) {
   const isStrong = signal.score >= 7;
@@ -166,8 +257,15 @@ function addLogToTable(signal) {
     placeholder.remove();
   }
 
+  // Ensure signal has tradeState defined
+  if (!tradeStates[signal.id]) {
+    tradeStates[signal.id] = { status: 'active', result: null };
+  }
+  const state = tradeStates[signal.id];
+
   const timeStr = new Date(signal.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const row = document.createElement('tr');
+  row.id = 'row-' + signal.id;
   const scoreClass = isStrong ? 'strong' : '';
   const dirClass = signal.direction === 'BUY' ? 'td-buy' : (signal.direction === 'SELL' ? 'td-sell' : 'td-neutral');
 
@@ -186,6 +284,7 @@ function addLogToTable(signal) {
     <td class="${dirClass}">${signal.direction}</td>
     <td><code class="rules-list">${signal.rules}</code></td>
     <td><span class="smt-badge ${signal.smt.includes('Valid') ? 'valid' : 'pending'}">${signal.smt}</span></td>
+    <td class="action-cell">${renderActionCellContent(signal.id, state.status, state.result)}</td>
     ${imageBtn}
   `;
 
@@ -195,6 +294,9 @@ function addLogToTable(signal) {
   if (logsBody.children.length > 50) {
     logsBody.lastChild.remove();
   }
+
+  // Refresh stats
+  updateStatsPanel();
 }
 
 // Push system notification to user
@@ -230,7 +332,7 @@ function connectSSE() {
       // Clear logs first
       logsBody.innerHTML = '';
       if (message.data.length === 0) {
-        logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="9">No history yet. Waiting for signals...</td></tr>`;
+        logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="10">No history yet. Waiting for signals...</td></tr>`;
       } else {
         // Render in chronological order (oldest first so prepending aligns latest on top)
         const sorted = [...message.data].reverse();
@@ -239,6 +341,7 @@ function connectSSE() {
           updateCard(signal);
           addLogToTable(signal);
         });
+        updateStatsPanel();
       }
     } else if (message.type === 'signal') {
       const signal = message.data;
@@ -560,8 +663,27 @@ btnSimulate.addEventListener('click', async () => {
 });
 
 // Clear Logs click
-btnClearLogs.addEventListener('click', () => {
-  logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="9">Logs cleared. Waiting for new signals...</td></tr>`;
+btnClearLogs.addEventListener('click', async () => {
+  logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="10">Logs cleared. Waiting for new signals...</td></tr>`;
+  
+  // Clear local memory structures
+  for (const k in signalsMap) {
+    delete signalsMap[k];
+  }
+  for (const k in tradeStates) {
+    delete tradeStates[k];
+  }
+  localStorage.removeItem('tradeStates');
+  
+  // Update stats
+  updateStatsPanel();
+  
+  // Clear backend history
+  try {
+    await fetch('/clear-history', { method: 'POST' });
+  } catch (err) {
+    console.error('Failed to clear backend history:', err);
+  }
 });
 
 // Run Init

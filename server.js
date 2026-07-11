@@ -81,6 +81,12 @@ app.post('/webhook', (req, res) => {
   }
 });
 
+// Clear history endpoint
+app.post('/clear-history', (req, res) => {
+  signalsLog = [];
+  res.status(200).json({ status: 'success' });
+});
+
 // Start Server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`===================================================`);

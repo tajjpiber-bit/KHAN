@@ -38,7 +38,53 @@
           <span class="icon">⚡</span> Simulate Signal
         </button>
       </div>
-    </header>
+    <!-- Daily Trading Stats Panel -->
+    <section class="stats-panel glass-panel" style="margin-bottom: 20px;">
+      <div class="stats-grid">
+        <div class="stats-card">
+          <span class="stats-icon">📦</span>
+          <div class="stats-info">
+            <span class="stats-num" id="stats-total">0</span>
+            <span class="stats-label">Total Signals Today</span>
+          </div>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon" style="color: #60a5fa;">⏳</span>
+          <div class="stats-info">
+            <span class="stats-num" id="stats-active" style="color: #60a5fa;">0</span>
+            <span class="stats-label">Active Trades</span>
+          </div>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon" style="color: #10b981;">✅</span>
+          <div class="stats-info">
+            <span class="stats-num" id="stats-wins" style="color: #10b981;">0</span>
+            <span class="stats-label">Closed Wins</span>
+          </div>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon" style="color: #f43f5e;">❌</span>
+          <div class="stats-info">
+            <span class="stats-num" id="stats-losses" style="color: #f43f5e;">0</span>
+            <span class="stats-label">Closed Losses</span>
+          </div>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon" style="color: #f59e0b;">📊</span>
+          <div class="stats-info">
+            <span class="stats-num" id="stats-winrate" style="color: #f59e0b;">0%</span>
+            <span class="stats-label">Win Rate</span>
+          </div>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon" style="color: #a7f3d0;">💰</span>
+          <div class="stats-info">
+            <span class="stats-num" id="stats-pnl" style="color: #a7f3d0;">0.0R</span>
+            <span class="stats-label">Net Profit (R)</span>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Main Grid Dashboard: 12 Pairs -->
     <section class="pairs-grid" id="pairs-container">
@@ -65,12 +111,13 @@
                 <th>Direction</th>
                 <th>Active Rules</th>
                 <th>SMT Check</th>
+                <th>Trade Status / Action</th>
                 <th>Chart</th>
               </tr>
             </thead>
             <tbody id="logs-body">
               <tr class="placeholder-row">
-                <td colspan="9">Waiting for signals from TradingView... Click "Simulate Signal" to test.</td>
+                <td colspan="10">Waiting for signals from TradingView... Click "Simulate Signal" to test.</td>
               </tr>
             </tbody>
           </table>
