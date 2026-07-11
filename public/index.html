@@ -30,6 +30,17 @@
           <span class="control-label">Strong Confluence (7+/10) Only</span>
         </div>
 
+        <div class="control-toggle" style="margin-right: 10px;">
+          <span class="control-label" style="margin-right: 6px;">🔔 Tone:</span>
+          <select id="select-tone" class="btn-secondary" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(20,22,28,0.8); color: #fff; cursor: pointer; font-size: 12px; font-weight: 600;">
+            <option value="alarm">🚨 Sci-Fi Alarm (Loud Warning)</option>
+            <option value="bell">🔔 Metallic Bell (Clear Ring)</option>
+            <option value="radar">📡 Sonar Radar (Digital Ping)</option>
+            <option value="laser">⚡ Arcade Laser (High Pitch)</option>
+            <option value="beep">📻 Digital Clock (Beep Beep)</option>
+          </select>
+        </div>
+
         <button id="btn-sound" class="btn-secondary">
           <span class="icon">🔊</span> Sound On
         </button>
@@ -38,6 +49,7 @@
           <span class="icon">⚡</span> Simulate Signal
         </button>
       </div>
+    </header>
     <!-- Daily Trading Stats Panel -->
     <section class="stats-panel glass-panel" style="margin-bottom: 20px;">
       <div class="stats-grid">
@@ -200,9 +212,12 @@
     </div>
   </div>
 
-  <!-- Audio asset for signal alerts -->
-  <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav" preload="auto"></audio>
-  <audio id="strong-alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-600.wav" preload="auto"></audio>
+  <!-- Selection of distinct loud audio tones for signal alerts -->
+  <audio id="tone-bell" src="https://assets.mixkit.co/active_storage/sfx/911/911-600.wav" preload="auto"></audio>
+  <audio id="tone-radar" src="https://assets.mixkit.co/active_storage/sfx/1070/1070-600.wav" preload="auto"></audio>
+  <audio id="tone-alarm" src="https://assets.mixkit.co/active_storage/sfx/951/951-600.wav" preload="auto"></audio>
+  <audio id="tone-laser" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-600.wav" preload="auto"></audio>
+  <audio id="tone-beep" src="https://assets.mixkit.co/active_storage/sfx/1003/1003-600.wav" preload="auto"></audio>
 
   <script src="app.js"></script>
 </body>

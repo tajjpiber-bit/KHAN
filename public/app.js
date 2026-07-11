@@ -29,8 +29,23 @@ const btnSimulate = document.getElementById('btn-simulate');
 const btnClearLogs = document.getElementById('btn-clear-logs');
 // Alert state
 let soundEnabled = true;
-const alertSound = document.getElementById('alert-sound');
-const strongAlertSound = document.getElementById('strong-alert-sound');
+// Load persistent selected tone
+const selectTone = document.getElementById('select-tone');
+let selectedTone = localStorage.getItem('selectedTone') || 'alarm';
+
+if (selectTone) {
+  selectTone.value = selectedTone;
+  selectTone.addEventListener('change', (e) => {
+    selectedTone = e.target.value;
+    localStorage.setItem('selectedTone', selectedTone);
+    // Play a brief preview of the selected sound
+    const previewAudio = document.getElementById(`tone-${selectedTone}`);
+    if (previewAudio) {
+      previewAudio.currentTime = 0;
+      previewAudio.play().catch(err => console.log('Audio playback block:', err));
+    }
+  });
+}
 
 // Initialize Symbol Cards
 function initCards() {
@@ -139,15 +154,22 @@ function updateCard(signal) {
 function playSound(signal) {
   if (!soundEnabled) return;
 
-  const isGoldSMT = signal.symbol === 'XAUUSD' && signal.smt.includes('Valid');
-  const isExtreme = signal.score >= 9;
+  const toneId = `tone-${selectedTone}`;
+  const audioElement = document.getElementById(toneId);
 
-  if (isGoldSMT || isExtreme) {
-    strongAlertSound.currentTime = 0;
-    strongAlertSound.play().catch(e => console.log('Audio playback error:', e));
-  } else {
-    alertSound.currentTime = 0;
-    alertSound.play().catch(e => console.log('Audio playback error:', e));
+  if (audioElement) {
+    audioElement.currentTime = 0;
+    audioElement.play().catch(e => console.log('Audio playback error:', e));
+    
+    // For super strong confluences (score >= 9) or Gold SMT, play it twice!
+    const isGoldSMT = signal.symbol === 'XAUUSD' && signal.smt.includes('Valid');
+    const isExtreme = signal.score >= 9;
+    if (isGoldSMT || isExtreme) {
+      setTimeout(() => {
+        audioElement.currentTime = 0;
+        audioElement.play().catch(e => {});
+      }, 700);
+    }
   }
 }
 
