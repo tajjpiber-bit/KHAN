@@ -101,12 +101,55 @@
     </div>
   </div>
 
-  <!-- Image Viewer Modal -->
+  <!-- Advanced Signal Details & Analysis Modal -->
   <div id="image-modal" class="modal">
-    <div class="modal-wrapper">
+    <div class="analysis-container">
       <span class="close-modal">&times;</span>
-      <img id="modal-img" src="" alt="Chart Screenshot">
-      <div id="modal-caption">TradingView Screenshot</div>
+      
+      <div class="analysis-grid">
+        <!-- Left Pane: Image & PnL Tool -->
+        <div class="analysis-left">
+          <div class="tab-header">
+            <button class="tab-btn active" id="btn-tab-chart" onclick="switchLeftTab('chart')">📸 Chart View</button>
+            <button class="tab-btn" id="btn-tab-pnl" onclick="switchLeftTab('pnl')">📊 Risk/Reward (PnL)</button>
+          </div>
+          <div class="tab-content" id="chart-content">
+            <img id="modal-img" src="" alt="Chart Screenshot">
+          </div>
+          <div class="tab-content" id="pnl-content" style="display:none;">
+            <!-- PnL Position Widget is dynamically injected here -->
+          </div>
+        </div>
+        
+        <!-- Right Pane: Confluence & Strategy Breakdown -->
+        <div class="analysis-right">
+          <div class="analysis-header-info">
+            <h2 id="analysis-title">XAUUSD BUY</h2>
+            <div id="analysis-meta" style="margin-top: 8px; display: flex; gap: 10px; align-items: center;">
+              <span id="analysis-timeframe" class="tf-badge">-</span>
+              <span id="analysis-price" style="font-weight: 800; font-size: 14px; color: #fff;">-</span>
+            </div>
+          </div>
+          
+          <div class="confluence-stats" style="margin-top: 15px;">
+            <div class="stat-box">
+              <span class="stat-val" id="analysis-score">-</span>
+              <span class="stat-label">Confluence Score</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-val" id="analysis-smt">-</span>
+              <span class="stat-label">SMT Divergence</span>
+            </div>
+          </div>
+          
+          <div class="triggered-rules-container" style="margin-top: 20px;">
+            <h3>Triggered Rules Breakdown</h3>
+            <div class="strategy-cards-list" id="analysis-rules-cards">
+              <!-- Dynamically populated strategy cards with descriptions & CSS diagrams -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -174,7 +174,7 @@ function addLogToTable(signal) {
   const priceText = signal.symbol.includes('JPY') ? `¥${signal.price.toFixed(2)}` : `$${signal.price.toFixed(2)}`;
 
   const imageBtn = (signal.image && signal.image.startsWith('http')) 
-    ? `<td><button class="btn-view-chart" onclick="showChartModal('${signal.image}')">📸 View</button></td>` 
+    ? `<td><button class="btn-view-chart" onclick="showChartModal('${signal.id}')">📸 View</button></td>` 
     : `<td>-</td>`;
 
   row.innerHTML = `
@@ -230,17 +230,19 @@ function connectSSE() {
       // Clear logs first
       logsBody.innerHTML = '';
       if (message.data.length === 0) {
-        logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="8">No history yet. Waiting for signals...</td></tr>`;
+        logsBody.innerHTML = `<tr class="placeholder-row"><td colspan="9">No history yet. Waiting for signals...</td></tr>`;
       } else {
         // Render in chronological order (oldest first so prepending aligns latest on top)
         const sorted = [...message.data].reverse();
         sorted.forEach(signal => {
+          signalsMap[signal.id] = signal;
           updateCard(signal);
           addLogToTable(signal);
         });
       }
     } else if (message.type === 'signal') {
       const signal = message.data;
+      signalsMap[signal.id] = signal;
       updateCard(signal);
       addLogToTable(signal);
       
@@ -253,16 +255,226 @@ function connectSSE() {
   };
 }
 
+// State maps
+const signalsMap = {};
+
+// Symbol Average Daily Range values (ADR in price points)
+const SYMBOL_ADR = {
+  'XAUUSD': 25.0,
+  'BTCUSDT': 2000.0,
+  'NAS100': 220.0,
+  'USDJPY': 1.20,
+  'GBPJPY': 1.60,
+  'EURUSD': 0.0080,
+  'GBPUSD': 0.0100,
+  'AUDUSD': 0.0070,
+  'USDCAD': 0.0075,
+  'NZDUSD': 0.0065,
+  'US30': 350.0,
+  'XAGUSD': 0.60
+};
+
+// Strategy descriptions and metadata
+const STRATEGY_DETAILS = {
+  'S1': {
+    name: 'BBMA Reentry Complete',
+    desc: 'Bollinger Bands + Moving Average trend alignment. Price retraces to touch the 5/10 EMA high/low boundaries inside the outer Bollinger Band, indicating a high-probability continuation reentry point.',
+    diagramClass: 'bbma-diag'
+  },
+  'S2': {
+    name: 'Candle Range Theory (CRT)',
+    desc: 'Mother candle high/low range sweeps. Price breaks the initial candle range and closes back inside, indicating a fakeout/reversal.',
+    diagramClass: 'generic-diag'
+  },
+  'S3': {
+    name: 'CISD (Change in State of Delivery)',
+    desc: 'Order flow delivery reversal. The closing of a candle violates the previous opposing candle, shifting delivery state from buy to sell or vice-versa.',
+    diagramClass: 'generic-diag'
+  },
+  'S4': {
+    name: 'Previous Candle Liquidity Sweep',
+    desc: 'The current candle sweeps the high or low wick of the previous candle to collect stops before reversing in the intended direction.',
+    diagramClass: 'generic-diag'
+  },
+  'S5': {
+    name: 'ICT Wave Reversal (iFVG / OB)',
+    desc: 'Fair Value Gap inversion. Price closes past a key Fair Value Gap or respects a newly created Order Block, shifting localized momentum.',
+    diagramClass: 'fvg-diag'
+  },
+  'S6': {
+    name: '3-Candle Swing wick Sweep',
+    desc: 'Swing High or Swing Low manipulation. A candle sweeps the high/low of a valid 3-candle swing point before reversing.',
+    diagramClass: 'generic-diag'
+  },
+  'S7': {
+    name: 'CBDR Range Consolidation',
+    desc: 'Asian session consolidation boundaries. Checks if liquidity is swept outside the Central Bank Dealers Range boundaries.',
+    diagramClass: 'generic-diag'
+  },
+  'S8': {
+    name: 'Flips / SZO (Support Zone Obstruction)',
+    desc: 'Support becomes Resistance flip (or vice-versa). Marks key zone retests where structural pivot flips occur.',
+    diagramClass: 'generic-diag'
+  },
+  'S9': {
+    name: 'Order Block Mitigation',
+    desc: 'Institutional buy/sell zone retest. Price returns to mitigate (test) a valid Order Block where heavy buy/sell orders were filled.',
+    diagramClass: 'ob-diag'
+  },
+  'S10': {
+    name: 'Premium / Discount Zone Retest',
+    desc: 'Fibonacci Equilibrium check. Ensures BUY signals are triggered in the Discount Zone (below 0.5 Fib) and SELL signals in the Premium Zone.',
+    diagramClass: 'generic-diag'
+  }
+};
+
 // Modal elements
 const imageModal = document.getElementById('image-modal');
 const modalImg = document.getElementById('modal-img');
 const closeModal = document.querySelector('.close-modal');
 
-// Show image in modal
-function showChartModal(url) {
-  modalImg.src = url;
+const chartContent = document.getElementById('chart-content');
+const pnlContent = document.getElementById('pnl-content');
+const btnTabChart = document.getElementById('btn-tab-chart');
+const btnTabPnl = document.getElementById('btn-tab-pnl');
+
+const analysisTitle = document.getElementById('analysis-title');
+const analysisTimeframe = document.getElementById('analysis-timeframe');
+const analysisPrice = document.getElementById('analysis-price');
+const analysisScore = document.getElementById('analysis-score');
+const analysisSmt = document.getElementById('analysis-smt');
+const analysisRulesCards = document.getElementById('analysis-rules-cards');
+
+// Tab switching inside modal
+window.switchLeftTab = function(tabName) {
+  if (tabName === 'chart') {
+    chartContent.style.display = 'flex';
+    pnlContent.style.display = 'none';
+    btnTabChart.classList.add('active');
+    btnTabPnl.classList.remove('active');
+  } else {
+    chartContent.style.display = 'none';
+    pnlContent.style.display = 'flex';
+    btnTabChart.classList.remove('active');
+    btnTabPnl.classList.add('active');
+  }
+};
+
+// Show details and PnL in modal
+window.showChartModal = function(signalId) {
+  const signal = signalsMap[signalId];
+  if (!signal) return;
+
+  // Set default view to chart tab
+  switchLeftTab('chart');
+
+  // Fill text details
+  analysisTitle.textContent = `${signal.symbol} ${signal.direction}`;
+  analysisTitle.className = signal.direction === 'BUY' ? 'analysis-header-info buy-title' : 'analysis-header-info sell-title';
+  analysisTimeframe.textContent = signal.timeframe;
+  analysisPrice.textContent = signal.symbol.includes('JPY') ? `¥${signal.price.toFixed(2)}` : `$${signal.price.toFixed(2)}`;
+  analysisScore.textContent = `${signal.score}/10`;
+  
+  if (signal.score >= 7) {
+    analysisScore.className = 'stat-val strong';
+  } else {
+    analysisScore.className = 'stat-val';
+  }
+  
+  analysisSmt.textContent = signal.smt;
+
+  // Set Image
+  modalImg.src = signal.image || 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800';
+
+  // Calculate SL/TP levels based on ADR and 1:2 / 1:3 reward-risk ratios
+  const baseADR = SYMBOL_ADR[signal.symbol] || (signal.symbol.includes('JPY') ? 1.20 : 0.0100);
+  let tfMultiplier = 0.15; // default 15m
+  if (signal.timeframe === '5m') tfMultiplier = 0.10;
+  else if (signal.timeframe === '15m') tfMultiplier = 0.15;
+  else if (signal.timeframe === '30m') tfMultiplier = 0.20;
+  else if (signal.timeframe === '1h') tfMultiplier = 0.25;
+  else if (signal.timeframe === '4h') tfMultiplier = 0.40;
+  else if (signal.timeframe === '1D') tfMultiplier = 0.60;
+
+  const adrOffset = baseADR * tfMultiplier;
+  const isBuy = signal.direction === 'BUY';
+
+  const entry = signal.price;
+  const sl = isBuy ? (entry - adrOffset) : (entry + adrOffset);
+  const tp1 = isBuy ? (entry + adrOffset * 2) : (entry - adrOffset * 2);
+  const tp2 = isBuy ? (entry + adrOffset * 3) : (entry - adrOffset * 3);
+
+  const formatVal = (val) => signal.symbol.includes('JPY') ? `¥${val.toFixed(2)}` : `$${val.toFixed(2)}`;
+
+  // Render PnL Widget
+  pnlContent.innerHTML = `
+    <div class="pnl-widget-container">
+      <div class="pnl-header">${signal.symbol} - ${signal.direction} (ADR Stop Setup)</div>
+      <div class="pnl-bars">
+        <!-- Target Profit Zone (Green) -->
+        <div class="pnl-zone target" style="flex: 3;">
+          <div class="pnl-label-row tp2">
+            <span>TP2 (1:3 RR)</span>
+            <span>${formatVal(tp2)}</span>
+          </div>
+          <div class="pnl-label-row tp1">
+            <span>TP1 (1:2 RR)</span>
+            <span>${formatVal(tp1)}</span>
+          </div>
+        </div>
+        
+        <!-- Entry Price Line -->
+        <div class="pnl-entry-bar" style="top: 75%;"></div>
+        <div class="pnl-entry-label" style="top: 75%;">${formatVal(entry)}</div>
+        
+        <!-- Stop Loss Zone (Red) -->
+        <div class="pnl-zone stop" style="flex: 1;">
+          <div class="pnl-label-row sl" style="margin-top: auto;">
+            <span>SL (ADR Stop)</span>
+            <span>${formatVal(sl)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Render Triggered Strategy explanation cards
+  analysisRulesCards.innerHTML = '';
+  if (signal.rules && signal.rules !== '-') {
+    const activeRules = signal.rules.split(',').map(r => r.trim());
+    activeRules.forEach(ruleKey => {
+      const details = STRATEGY_DETAILS[ruleKey];
+      if (details) {
+        const card = document.createElement('div');
+        card.className = 'rule-explain-card';
+        card.innerHTML = `
+          <div class="rule-card-header">
+            <span class="rule-card-title">${ruleKey}: ${details.name}</span>
+            <span class="badge-premium" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); font-size: 8px;">ACTIVE</span>
+          </div>
+          <div class="rule-card-desc">${details.desc}</div>
+          <div class="diag-container ${details.diagramClass}">
+            ${details.diagramClass === 'generic-diag' ? '' : `
+              <div class="fvg-block"></div>
+              <div class="ob-block"></div>
+              <div class="ma-line"></div>
+              <div class="bb-band upper"></div>
+              <div class="bb-band lower"></div>
+              <div class="diag-candle c1"></div>
+              <div class="diag-candle c2"></div>
+              <div class="diag-candle c3"></div>
+            `}
+          </div>
+        `;
+        analysisRulesCards.appendChild(card);
+      }
+    });
+  } else {
+    analysisRulesCards.innerHTML = '<div style="color: var(--text-secondary); font-size: 13px;">No specific strategy rules triggered.</div>';
+  }
+
   imageModal.classList.add('active');
-}
+};
 
 // Close modal handlers
 closeModal.addEventListener('click', () => {
